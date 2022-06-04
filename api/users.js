@@ -1,5 +1,11 @@
 const router = require('express').Router();
 
+const bcrypt = require('bcryptjs')
+
+const { UserSchema} = require('../models/user')
+const {generateAuthToken, requireAuthentication} = require('../lib/auth')
+
+
 exports.router = router;
 
 // const { businesses } = require('./businesses');
