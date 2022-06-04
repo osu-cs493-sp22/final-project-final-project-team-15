@@ -16,11 +16,11 @@ exports.router = router;
 exports.courses = courses;
 
 
-router.get('/', requireAuthentication, async(req, res) => {
+router.get('/', async(req, res) => {
 
 });
 
-router.post('/', async(req, res) => {
+router.post('/', requireAuthentication, async(req, res) => {
 
 });
 
@@ -28,23 +28,23 @@ router.get('/:id', async(req, res) => {
 
 });
 
-router.patch('/:id', async(req, res) => {
+router.patch('/:id', requireAuthentication, async(req, res) => {
 
 });
 
-router.delete('/:id', async(req, res) => {
+router.delete('/:id', requireAuthentication, async(req, res) => {
 
 });
 
-router.get('/:id/students', async(req, res) => {
+router.get('/:id/students', requireAuthentication, async(req, res) => {
 
 });
 
-router.post('/:id/students', async(req, res) => {
+router.post('/:id/students', requireAuthentication, async(req, res) => {
 
 });
 
-router.get('/:id/roster', async(req, res) => {
+router.get('/:id/roster', requireAuthentication, async(req, res) => {
 
 });
 
