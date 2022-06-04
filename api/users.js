@@ -48,3 +48,26 @@ router.get('/:userid/photos', async function(req, res) {
         photos: userPhotos
     });
 });
+
+router.post('/login', async function (req, res) {
+    if (req.body && req.body.email && req.body.password){
+      const email = req.body.email
+      //const userpass = await User.findOne({where: { email: email }},'password')
+      const userpass = await User.find({ email: email })
+      const hashcheck = userpass && await bcrypt.compareSync(
+      req.body.password,
+      userpass.password
+      )
+      if (hashcheck){
+        const token = generateAuthToken(userpass.userId, userpass.admin)
+        res.status(200).send({
+          token: token
+        })
+      }
+      else 
+        res.status(401).send({error :"error invalid credentials"})
+    }
+    else 
+        res.status(401).send({error :"error invalid request body"})
+    })
+    
