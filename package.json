@@ -19,11 +19,15 @@
   },
   "homepage": "https://github.com/osu-cs493-sp22/template-assignment-2#readme",
   "dependencies": {
+    "amqplib": "^0.10.0",
+    "bcryptjs": "^2.4.3",
     "express": "^4.17.3",
-    "mongodb": "^4.5.0",
-    "morgan": "^1.10.0"
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^4.6.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.15"
+    "nodemon": "^2.0.16"
   }
 }
