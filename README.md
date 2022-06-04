@@ -1,89 +1,94 @@
-# Assignment 2
+CS 493 Final Project
+Code due at final project demo
+Final project demos will be scheduled during finals week
+In this course, a final programming project will take the place of formal exams to test your understanding of the material.  The final project will involve working with a team of 3-4 people to implement a complete RESTful API for an application called Tarpaulin.  You can find more details about Tarpaulin below.  The API you implement will need to utilize most of the components of a modern API that we talked about in class.
+Tarpaulin
+The application for which you’ll write an API for this project is Tarpaulin, a lightweight course management tool that’s an “alternative” to Canvas.  In particular, Tarpaulin allows users (instructors and students) to see information about the courses they’re teaching/taking.  It allows instructors to create assignments for their courses, and it allows students to submit solutions to those assignments.
 
-**Assignment due at 11:59pm on Monday 5/2/2022**<br/>
-**Demo due by 11:59pm on Monday 5/16/2022**
+The Tarpaulin API you implement must support all of the endpoints described in the Tarpaulin OpenAPI specification.  You can load this specification into the editor at https://editor.swagger.io to see automatically-generated documentation for all the API endpoints you’ll need to implement for the final project. Importantly, you are free to implement these endpoints however you see fit.  For example, you may use whatever database you want, and you may design your API architecture to meet your own needs.
 
-The goal of this assignment is to start using a real database to store application data.  The assignment requirements are listed below.
+The OpenAPI specification linked above will provide most of the details of the API you’ll implement, but some more details are included below.
+Entities
+There are several kinds of entity the Tarpaulin API will need to keep track of:
+Users – These represent Tarpaulin application users.  Each User can have one of three roles: admin, instructor, and student.  Each of these roles represents a different set of permissions to perform certain API actions.  The permissions associated with these roles are defined further in the Tarpaulin OpenAPI specification.
+Courses – These represent courses being managed in Tarpaulin.  Each Course has basic information, such as subject code, number, title, instructor, etc.  Each Course also has associated data of other entity types, including a list of enrolled students (i.e. Tarpaulin Users with the student role) as well as a set of assignments.  More details about how to manage these pieces of data are included both below and in the Tarpaulin OpenAPI specification linked above.
+Assignments – These represent a single assignment for a Tarpaulin Course.  Each Assignment belongs to a specific Course and has basic information such as a title, due date, etc.  It also has a list of individual student submissions.
+Submissions – These represent a single student submission for an Assignment in Tarpaulin.  Each submission belongs both to its Assignment to the student who submitted it, and it is marked with a submission timestamp.  Each submission is also associated with a specific file, which will be uploaded to the Tarpaulin API and stored, so it can be downloaded later.  Finally, each submission may be assigned a grade, though grades cannot be assigned when the submission is first created but must be assigned later through an update operation.
+Actions
+Many of the actions that can be performed with the Tarpaulin API are similar to ones we’ve seen in the work we’ve done in class, including fetching entity data and creating, modifying, and deleting entities.  These actions should not need much explanation beyond what’s included in the Tarpaulin OpenAPI specification.  A few specific actions deserve more attention, though:
 
-You are provided some starter code in this repository that implements a solution to assignment 1.  The starter code's API server is implemented in `server.js`, and individual routes are modularized within the `api/` directory.  Tests and a testing environment for the API are included in the `tests/` directory.  You can import these tests into either Postman or Insomnia and build on them if you like.  Note that, depending on where you're running your API server, you may need to update the `baseUrl` variable in the included testing environment to reflect the URL for your own server.
 
-The starter code also includes an `openapi.yaml` file in the `public/` directory.  You can import this file into the OpenAPI editor at https://editor.swagger.io/ to generate documentation for the server to see how its endpoints are set up.
+Course roster download – this action, implemented by the GET /courses/{id}/roster endpoint, allows certain authorized users to download a CSV-formatted roster for a specific course.  The roster will contain a list of the students currently enrolled in the course, in CSV format, e.g.:
 
-Feel free to use this code as your starting point for this assignment.  You may also use your own solution to assignment 1 as your starting point if you like.
+"abc123","Leia Organa","organal@oregonstate.edu"
+"def456","Luke Skywalker","skywallu@oregonstate.edu"
+...
 
-## Use a database to power your API
+Importantly, this file must be generated by the API, based on the list of enrolled students stored in the database.
 
-Your overarching goal for this assignment is to modify the API server to use a database to store the following resources:
-  * Businesses
-  * Reviews
-  * Photos
 
-You may choose either MySQL or MongoDB for this purpose (or another DB implementation you're interested in, with permission).  Whichever database you choose, it should completely replace the starter code's existing JSON/in-memory storage for these resources.  In other words, you should update all API endpoints in the original starter code to use your database.
+Assignment submission creation – this action, implemented by the POST /assignments/{id}/submissions endpoint, allows authorized student Users to upload a file submission for a specific assignment.  Importantly, the file uploaded for each Submission must be stored by the API in such a way that it can be later downloaded via URL.  Specifically, when storing the submission file, the API should generate the URL with which that file can later be accessed.  This URL will be returned along with the rest of the information about the Submission from the GET /assignments/{id}/submissions endpoint.
 
-You should use the [official MySQL Docker image](https://hub.docker.com/_/mysql/) or the [official MongoDB Docker image](https://hub.docker.com/_/mongo) from Docker Hub to power your database.  Whichever database you choose, your implementation should satisfy the criteria described below.
 
-## Database initialization
+User data fetching – this action, implemented by the GET /users/{id} endpoint, allows Users to see their own data.  Importantly, only a logged-in User can see their own data.  The data returned by this endpoint should also include the list of classes the User is enrolled in (for student Users) or teaching (for instructor Users).
+Course information fetching – this action, implemented by the GET /courses and GET /courses/{id} endpoints, allows users to see information about all Courses or about a specific Course.  Note that the information included by both of these endpoints should not return information about a Course’s enrolled students or its Assignments.  Instead, that information can be fetched by the GET /courses/{id}/students and GET /courses/{id}/assignments endpoints, respectively.
+Pagination
+A few of the Tarpaulin API endpoints must be paginated:
+GET /courses
+GET /assignments/{id}/submissions
+It’s up to you to determine the appropriate way to paginate these endpoints, including how the page size is set, etc.
+Authorization
+Many of the endpoints in the Tarpaulin API require authorization, as described in the Tarpaulin OpenAPI specification.  You may implement this using the standard JWT-based authorization scheme we discussed in class.
+Rate limiting
+Your API should be rate-limited as follows:
+For requests made without a valid authentication token, your API should permit 10 requests/minute.  These requests should be rate-limited on a per-IP address basis.
+For requests made with a valid authentication token, your API should permit 30 requests per minute.  These requests should be rate-limited on a per-user basis.
+Docker containerization
+All services used by your API (e.g. databases, caches, processing pipelines, etc.) should be run in Docker containers.  These containers can be manually created and initialized via the command line.
+New tech, 3rd-party libraries, and other tools
+You may treat the final project as an opportunity to learn how to use API backend technologies we didn’t cover in class.  Specifically, if there’s a database implementation, third-party tool or library, etc. you want to use for the project, feel free to do so.
+GitHub repositories
+The code for your final project must be in a GitHub repository set up via GitHub Classroom.  You can use this link to form your team and create your final project repository:
 
-Before you run your application for the first time, you'll have to make sure your database is initialized and ready to store your application data.  Use the mechanisms described below to initialize your database when you launch the database container, so the database is ready to use when you launch your app.
+https://classroom.github.com/a/bfBqhMbH
 
-### MySQL
+The repository created for your team will be private by default.    However, you will have full administrative control over the repository that’s created for your project, which means you’ll be able to make it public if you wish.  I encourage you to make your repo public.  These final projects should be nice demonstrations of your web development abilities and will be a good item to have in your CS portfolio.  It will be great to have the code in a public GitHub repo so you can share it easily when you want to.
 
-If you're using MySQL, you should make sure to set the following environment variables when launching your database container:
-  * `MYSQL_ROOT_PASSWORD` - This specifies the password that is set for the MySQL `root` user.  You can also use `MYSQL_RANDOM_ROOT_PASSWORD` to allow the container to generate a random password.
-  * `MYSQL_DATABASE` - This specifies the name of a MySQL database to be created when your container first starts.
-  * `MYSQL_USER` and `MYSQL_PASSWORD` - These are used to create a new user, in addition to the `root` user, who will have permissions only for the database named in `MYSQL_DATABASE`.  This is the user you should use to connect to your database from your API server.
+If you’ve already started a GitHub repo for your project, don’t worry.  The repository created via the GitHub classroom link above will be completely empty, so you can simply use git remotes to work with both repositories.  I can help you set that up if needed.
+Working with a team on a shared GitHub repo
+When working with a team on a shared GitHub repo, it’s a good idea to use a workflow that uses branches and pull requests.  This has a few advantages:
 
-If you use Sequelize to interact with your MySQL database, Sequelize will handle the creation of tables for you.
+By not working within the same branch, you can better avoid causing conflicts, which can occur when you and another member of your team edit the same parts of the code at the same time.
+It helps you to be more familiar with the entire code base, even the parts that other team members are working on, because you’ll see all of the changes to the code as you review pull requests.  This can help you develop more rapidly because you won’t have to spend as much time understanding code that others have written.
+It helps to ensure high quality code.  Code in pull requests is not incorporated into the main code branch until the code request is reviewed and approved.  That means everyone has a chance to improve pull request code before it becomes permanent.
 
-### MongoDB
+One simple but effective branch- and pull-request-based workflow you might consider is the GitHub flow: https://guides.github.com/introduction/flow/.
+Grading demonstrations
+To get a grade for your project, your team must do a brief (10-15 minute) demonstration to me (Hess) of your project’s functionality.  These demos will be scheduled for finals week.  I’ll send more details on scheduling demos for the final project when we get closer to that time.
 
-If you're using MongoDB, you should make sure to set the following environment variables when launching your database container:
-  * `MONGO_INITDB_ROOT_USERNAME` and `MONGO_INITDB_ROOT_USERNAME` - These are used to create the MongoDB `root` user.
-  * `MONGO_INITDB_DATABASE` - This specifies the name of a MongoDB database to be created when your container first starts.
+Note that you should have a set of requests/tests written and ready to go when you arrive at your demo.  These tests should fully demonstrate your API’s functionality.  You are free to use Postman, Insomnia, or any other API testing tool you like to implement these tests.  Having these tests ready to go at your demo will comprise part of your grade for this project.
+Submission
+All code for your final project must be pushed to the main branch of the repo created for your team using the GitHub Classroom link above before your grading demo.  Please note that if you’d like to keep your own copy of your final project code, you should fork your team’s repository at the end of the course, since the GitHub organization for our course may eventually be deleted, along with all of the repositories stored there.
+Canvas groups
+Before having your project graded, your team must add all of its members into one of the pre-created final project groups on Canvas.  To do this, go to the “People” section of our Canvas course and navigate to the “Final Project Teams” tab. You’ll see several groups starting with "Final Project Team". You can choose one of these to use for your team. If you're the first person to sign up for a group, you’ll be able to manage its membership and add your teammates.
+Grading criteria
+Your team’s grade (out of 100 points) for the final project will be based on successfully implementing a complete API that satisfies these criteria:
 
-**While it is a security risk to do so in a production setting**, it's fine if you interact with the database from your API server as the ROOT user for this assignment.  Because MongoDB generally uses a "create on first use" approach, you won't have to worry about initializing collections.
+50 points – Your API successfully implements all of the endpoints described in the Tarpaulin OpenAPI specification.
+10 points – Your API endpoints correctly require authorization, as described in the Tarpaulin OpenAPI specification.
+5 points – Your API correctly paginates the appropriate endpoints, as described above and in the Tarpaulin OpenAPI specification.
+5 points – Your API implements rate limiting, as described above.
+10 points – Your API’s services are run in Docker containers, as described above.
+10 points – You have a set of tests/requests written and ready to go at your grading demo to fully demonstrate your API’s functionality.
+10 points – Your API has a high-quality design and implementation.
 
-## Database organization
 
-Your database should store all resource data (i.e. businesses, photos, and reviews) for the API.  Because the resources you're working with are closely tied to each other (e.g. each review is tied to both a specific business and a specific user), you'll have to think carefully about how you organize and access them in your database.  Some suggestions are included below for each database.
+Remember also, if your team does not do a demo for your project, you will receive a zero for it.
+Individual grades
+Your individual grade for the project will be based on your team’s grade and also on evidence of your meaningful participation in your team’s work on the project, including from these sources:
 
-### MySQL
+The commit log of your GitHub repository.
+Your presence at and participation in your team’s project demo.
+A team evaluation completed by each member of your project team.
 
-If you're using MySQL, you will likely want to use [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/example-foreign-keys.html) to link reviews and photos to their corresponding business.  If you're using Sequelize, you can use [associations](https://sequelize.org/docs/v6/core-concepts/assocs/) to automatically manage foreign keys for you.
-
-### MongoDB
-
-If you're using MongoDB, there are many valid ways to organize data in your database.  For example, you could use three separate collections to store businesses, reviews, and photos.  In this case, you can either use [`$lookup` aggregation](https://docs.mongodb.com/manual/reference/operator/aggregation/lookup/) or multiple queries to gather data for a specific business (i.e. for the `GET /businesses/{id}` endpoint).
-
-Alternatively, you could store all photos and reviews as subdocuments of their corresponding business document.  In this case, you'll likely want to use [a projection](https://docs.mongodb.com/manual/tutorial/project-fields-from-query-results/) to omit the photo and review data from businesses when returning a list of all businesses (i.e. from the `GET /businesses` endpoint).  You'll also have to think carefully about how you find data for a specific user, e.g. a specific user's photos or reviews.  Do do this, you can use [subdocument array queries](https://docs.mongodb.com/manual/tutorial/query-array-of-documents/) to select businesses with reviews/photos by the specified user, and then you can use some custom JS to select only matching reviews/photos from those businesses.  Alternatively, you can use MongoDB's [aggregation pipeline](https://docs.mongodb.com/manual/core/aggregation-pipeline/) to structure a single query to fetch exactly the reviews/photos you're interested in.
-
-## Connecting the API server to your database
-
-Your API server should read the location (i.e. hostname, port, and database name) and credentials (i.e. username and password) for your database from environment variables.
-
-## Docker Compose specification
-
-You should write a simple Docker Compose specification that launches your entire application (i.e. API server and database server) from scratch with a single command.  Your Docker Compose specification in this case will specify two containers, one running your API server and one running your database server.
-
-When defining your Compose specification, make sure to specify the correct environment variables to initialize the database container and to allow the API server to connect to the database container, and make sure you publish the appropriate port(s) so you can communicate with your API.  Note that there is already a Dockerfile in this repository representing an image to run your API server, and you can reference this Dockerfile within your Compose specification.
-
-**It's a good idea to think about the Docker Compose specification as a "production" version of your app.**  In other words, get your server working the way you want them to *without* Docker before you worry about getting things working with Compose.  It'll lengthen your development cycle too much if you continually need to restart the Compose application every time you make changes to your server code.
-
-## Extra credit: Use Mongoose
-
-[Mongoose](https://mongoosejs.com/) is an object modeling tool for MongoDB that's very similar in spirit to Sequelize for MySQL.  If you choose to use MongoDB as your database, you can earn up to 10 points of extra credit by using Mongoose instead of the native MongoDB driver for Node.js.  To earn this extra credit, you must use Mongoose for all of your database interactions.
-
-## Submission
-
-We'll be using GitHub Classroom for this assignment, and you will submit your assignment via GitHub.  Just make sure your completed files are committed and pushed by the assignment's deadline to the master branch of the GitHub repo that was created for you by GitHub Classroom.  A good way to check whether your files are safely submitted is to look at the master branch your assignment repo on the github.com website (i.e. https://github.com/osu-cs493-sp22/assignment-2-YourGitHubUsername/). If your changes show up there, you can consider your files submitted.
-
-## Grading criteria
-
-This assignment is worth 100 total points, broken down as follows:
-
-  * 20 points: chosen database runs in a Docker container that is correctly initialized (e.g. by using appropriate environment variables the first time the container is launched)
-  * 60 points: all existing API endpoints in the starter code are modified to use your database
-  * 10 points: database connection parameters are correctly provided to API server via environment variables
-  * 10 points: a Docker Compose specification can be used to launch the entire application from scratch
-
-As described above, you can also earn up to 10 points of extra credit for using Mongoose in conjunction with MongoDB.
+In particular, if your GitHub commit log shows that you did not make meaningful contributions to your team’s implementation of your app, if you do not participate in your team’s demonstration of your app (without explicit prior approval by me), or if your project teammates submit team evaluations in which they agrees that you did not do an appropriate share of the work on your final project, you will receive a lower grade on the project than your teammates.  I may use other sources as evidence of your participation, as well.
