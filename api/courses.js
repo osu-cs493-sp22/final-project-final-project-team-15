@@ -6,6 +6,7 @@ const { users } = require('./users');
 const { assignments } = require('./assingments');
 const { submissions } = require('./submissions');
 
+const {generateAuthToken, requireAuthentication} = require('../lib/auth')
 const { getDbInstance } = require('../lib/mongo')
 
 const { ObjectID, ListCollectionsCursor, ObjectId } = require('mongodb');
@@ -15,7 +16,7 @@ exports.router = router;
 exports.courses = courses;
 
 
-router.get('/', async(req, res) => {
+router.get('/', requireAuthentication, async(req, res) => {
 
 });
 
