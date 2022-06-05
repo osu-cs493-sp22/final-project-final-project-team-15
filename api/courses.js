@@ -64,12 +64,33 @@ async function getAssignmentsByCourseId(id) {
   return assignments;
 }
 
+async function insertNewCourse(course) {
+  const db = getDbInstance();
+  const collection = db.collection("courses");
+
+  course = extractValidFields(course, CourseSchema);
+  const result = await collection.insertOne(course);
+  return result.insertedId;
+}
+
 router.get("/", async (req, res) => {
   const coursesPage = await getCoursesPage(parseInt(req.query.page) || 1);
   res.status(200).send(coursesPage);
 });
 
-router.post("/", requireAuthentication, async (req, res) => {});
+router.post("/", requireAuthentication, async (req, res) => {
+  if (req.admin !== "admin") {
+    next();
+  } else {
+    const newCourse = await insertNewCourse(req.body);
+    console.log("== req.headers:", req.headers);
+    if (newCourse) {
+      res.status(200).send(newCourse);
+    } else {
+      next();
+    }
+  }
+});
 
 router.get("/:id", async (req, res) => {
   const id = req.params.businessid;
