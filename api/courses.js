@@ -67,7 +67,7 @@ async function getAssignmentsByCourseId(id) {
 
 async function getStudentsByCourseId(id) {
     const db = getDbInstance();
-    const collection = db.collection("students");
+    const collection = db.collection("enrolled");
     console.log(id);
     const students = await collection
       .aggregate([{ $match: { courseId: new ObjectId(id) } }])
@@ -180,7 +180,9 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
     }
 });
 
-router.get("/:id/roster", requireAuthentication, async (req, res) => {});
+router.get("/:id/roster", requireAuthentication, async (req, res) => {
+
+});
 
 router.get("/:id/assignments", async (req, res) => {
   const id = req.params.id;
