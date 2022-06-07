@@ -84,6 +84,15 @@ async function insertNewCourse(course) {
   return result.insertedId;
 }
 
+async function insertNewStudent(student) {
+    const db = getDbInstance();
+    const collection = db.collection("courses");
+  
+    //need to add to specific course. students list need help
+    const result = await collection.insertOne(course);
+    return result.insertedId;
+  }
+
 router.get("/", async (req, res) => {
   const coursesPage = await getCoursesPage(parseInt(req.query.page) || 1);
   res.status(200).send(coursesPage);
@@ -121,7 +130,7 @@ router.patch("/:id", requireAuthentication, async (req, res) => {});
 router.delete("/:id", requireAuthentication, async (req, res) => {});
 
 router.get("/:id/students", requireAuthentication, async (req, res) => {
-    if (req.admin !== "student") {
+    if (req.admin == "student") {
         res.status(400).send(
             { error: "Not an Admin or instructor" }
           )
@@ -141,7 +150,24 @@ router.get("/:id/students", requireAuthentication, async (req, res) => {
     }
 });
 
-router.post("/:id/students", requireAuthentication, async (req, res) => {});
+router.post("/:id/students", requireAuthentication, async (req, res) => {
+    if (req.admin == "student") {
+        res.status(400).send(
+            { error: "Not an Admin or instructor" }
+          )
+        next();
+      } else {
+        //need help
+        if (students) {
+            res.status(200).send(students);
+        } else {
+            res.status(400).send(
+                { error: "Could not add student to class" }
+              )
+            next();
+        }
+    }
+});
 
 router.get("/:id/roster", requireAuthentication, async (req, res) => {});
 
