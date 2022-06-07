@@ -64,6 +64,17 @@ async function getAssignmentsByCourseId(id) {
   return assignments;
 }
 
+async function getStudentsByCourseId(id) {
+    const db = getDbInstance();
+    const collection = db.collection("students");
+    console.log(id);
+    const students = await collection
+      .aggregate([{ $match: { courseId: new ObjectId(id) } }])
+      .toArray();
+    console.log(students);
+    return students;
+  }
+
 async function insertNewCourse(course) {
   const db = getDbInstance();
   const collection = db.collection("courses");
@@ -80,6 +91,9 @@ router.get("/", async (req, res) => {
 
 router.post("/", requireAuthentication, async (req, res) => {
   if (req.admin !== "admin") {
+    res.status(400).send(
+        { error: "Not an Admin" }
+      )
     next();
   } else {
     const newCourse = await insertNewCourse(req.body);
@@ -93,7 +107,7 @@ router.post("/", requireAuthentication, async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
-  const id = req.params.businessid;
+  const id = req.params.id;
   const course = await getCourseById(id);
   if (course) {
     res.status(200).send(course);
@@ -106,7 +120,26 @@ router.patch("/:id", requireAuthentication, async (req, res) => {});
 
 router.delete("/:id", requireAuthentication, async (req, res) => {});
 
-router.get("/:id/students", requireAuthentication, async (req, res) => {});
+router.get("/:id/students", requireAuthentication, async (req, res) => {
+    if (req.admin !== "student") {
+        res.status(400).send(
+            { error: "Not an Admin or instructor" }
+          )
+        next();
+      } else {
+        const id = req.params.id;
+        const course = await getCourseById(id);
+        const students = await getStudentsByCourseId(id);
+        if (students) {
+            res.status(200).send(students);
+        } else {
+            res.status(400).send(
+                { error: "Could not find students for that id" }
+              )
+            next();
+        }
+    }
+});
 
 router.post("/:id/students", requireAuthentication, async (req, res) => {});
 
