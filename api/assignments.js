@@ -2,6 +2,8 @@ const router = require('express').Router();
 const { validateAgainstSchema, extractValidFields } = require('../lib/validation');
 
 const AssignmentSchema = require('../models/assignments')
+const SubmissionSchema = require('../models/submissions')
+
 const { users } = require('../models/users')
 const { courses } = require('../models/courses')
 const { submissions } = require('../models/submissions')
@@ -37,6 +39,14 @@ async function getSubmissionsByAssignmentId(id) {
     return submissions;
 }
 
+async function insertNewSubmission(submission) {
+    const db = getDbInstance();
+    const collection = db.collection("submissions");
+  
+    submission = extractValidFields(submission, SubmissionSchema);
+    const result = await collection.insertOne(submission);
+    return result.insertedId;
+  }
 
 router.post('/', async(req, res) => {
 
@@ -76,5 +86,18 @@ router.get('/:id/submissions', async(req, res) => {
 
 
 router.post('/:id/submissions', async(req, res) => {
-
+    if (req.admin !== "student") {
+        res.status(400).send(
+            { error: "Not an student" }
+          )
+        next();
+      } else {
+        const newSubmission = await insertNewSubmission(req.body);
+        console.log("== req.headers:", req.headers);
+        if (newSubmission) {
+          res.status(200).send(newSubmission);
+        } else {
+          next();
+        }
+      }
 });
