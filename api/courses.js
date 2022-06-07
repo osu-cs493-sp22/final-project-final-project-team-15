@@ -5,6 +5,7 @@ const {
 } = require("../lib/validation");
 
 const CourseSchema = require("../models/courses");
+const EnrolledStudentsSchema = require("../models/enrolledStudents");
 const { users } = require("./users");
 const { assignments } = require("./assingments");
 const { submissions } = require("./submissions");
@@ -86,12 +87,13 @@ async function insertNewCourse(course) {
 
 async function insertNewStudent(student) {
     const db = getDbInstance();
-    const collection = db.collection("courses");
+    const collection = db.collection("enrolled");
   
     //need to add to specific course. students list need help
-    const result = await collection.insertOne(course);
+    student = extractValidFields(student, EnrolledStudentsSchema);
+    const result = await collection.insertOne(student);
     return result.insertedId;
-  }
+}
 
 router.get("/", async (req, res) => {
   const coursesPage = await getCoursesPage(parseInt(req.query.page) || 1);
@@ -151,15 +153,24 @@ router.get("/:id/students", requireAuthentication, async (req, res) => {
 });
 
 router.post("/:id/students", requireAuthentication, async (req, res) => {
+    const id = req.params.id;
+    const course = getCourseById(id);
+    const TID = course.instructorId;
     if (req.admin == "student") {
         res.status(400).send(
             { error: "Not an Admin or instructor" }
           )
         next();
+      } else if (req.user != TID && req.admin != "admin") {
+        res.status(400).send(
+          { error: "Not the instructor for that class" }
+        )
+      next();
       } else {
         //need help
-        if (students) {
-            res.status(200).send(students);
+        const newStudent = await insertNewStudent(req.body);
+        if (newStudent) {
+            res.status(200).send(newStudent);
         } else {
             res.status(400).send(
                 { error: "Could not add student to class" }
