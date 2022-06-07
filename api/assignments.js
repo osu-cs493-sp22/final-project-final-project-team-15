@@ -46,10 +46,32 @@ async function insertNewSubmission(submission) {
     submission = extractValidFields(submission, SubmissionSchema);
     const result = await collection.insertOne(submission);
     return result.insertedId;
-  }
+}
+
+async function insertNewAssignment(assingment) {
+    const db = getDbInstance();
+    const collection = db.collection("assignments");
+  
+    assingment = extractValidFields(assingment, AssignmentSchema);
+    const result = await collection.insertOne(assingment);
+    return result.insertedId;
+}
 
 router.post('/', async(req, res) => {
-
+    if (req.admin !== "teacher") {
+        res.status(400).send(
+            { error: "Not an teacher" }
+          )
+        next();
+      } else {
+        const newAssignment = await insertNewAssignment(req.body);
+        console.log("== req.headers:", req.headers);
+        if (newAssignment) {
+          res.status(200).send(newAssignment);
+        } else {
+          next();
+        }
+      }
 });
 
 
