@@ -172,7 +172,7 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
 router.get("/:id/roster", requireAuthentication, async (req, res) => {});
 
 router.get("/:id/assignments", async (req, res) => {
-  const id = req.params.businessid;
+  const id = req.params.id;
   const assignments = await getAssignmentsByCourseId(id);
   if (assignments) {
     res.status(200).send(assignments);
