@@ -2,17 +2,14 @@ const router = require("express").Router();
 
 const bcrypt = require("bcryptjs");
 
-const { UserSchema, insertNewUser } = require("../models/users");
+const { UserSchema, insertNewUser, getUserByEmail, getUserInfo } = require("../models/users");
 const { generateAuthToken, requireAuthentication } = require("../lib/auth");
 const { validateAgainstSchema } = require("../lib/validation");
 
 exports.router = router;
 
-// const { businesses } = require('./businesses');
-// const { reviews } = require('./reviews');
-// const { photos } = require('./photos');
-
 const { getDbInstance } = require("../lib/mongo");
+const req = require("express/lib/request");
 
 /*
  * Route to list all of a user's businesses.
@@ -59,8 +56,28 @@ router.get("/:userid/photos", async function (req, res) {
   });
 });
 
+
+router.get("/:userid", requireAuthentication ,async function (req, res) {
+  const userInfo = await getUserInfo(req.params.userid, false);
+  if(userInfo) {
+    res.status(200).send(userInfo);
+  } else {
+    res.status(400).send(
+      { error: "user not found" }
+    )
+  }
+});
+
 router.post("/", async function (req, res) {
   if (validateAgainstSchema(req.body, UserSchema)) {
+
+    // check correct permissions for admin or instructor creation -- (does not work right now)
+    // if(req.body.role == 'admin' || req.body.role == 'instructor') {
+    //   requireAuthentication(req, res);
+    //   console.log(req.admin)
+    //   if(req.admin != 'admin') res.status(401).send({ error: "Invalid permissions" })
+    // }
+
     const id = await insertNewUser(req.body);
     res.status(201).send({
       _id: id,
@@ -74,9 +91,7 @@ router.post("/", async function (req, res) {
 
 router.post("/login", async function (req, res) {
   if (req.body && req.body.email && req.body.password) {
-    const email = req.body.email;
-    //const userpass = await User.findOne({where: { email: email }},'password')
-    const userpass = await User.find({ email: email });
+    const userpass = await getUserByEmail(req.body.email, true);
     const hashcheck =
       userpass &&
       (await bcrypt.compareSync(req.body.password, userpass.password));
