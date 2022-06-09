@@ -53,8 +53,8 @@ async function deleteAssignmentById(id) {
 async function insertNewSubmission(submission) {
   const db = getDbInstance();
   const collection = db.collection("submissions");
-
-  submission = extractValidFields(submission, SubmissionSchema);
+  submission.grade = null;
+  //submission = extractValidFields(submission, SubmissionSchema);
   const result = await collection.insertOne(submission);
   return result.insertedId;
 }

@@ -252,14 +252,19 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
 router.get("/:id/roster", requireAuthentication, async (req, res) => {
   const id = req.params.id;
   console.log("roseter id", id);
-  const listOfIds = await getStudentsByCourseId(id);
-  const data = await getStudentRoster(listOfIds);
-  const fields = ["name", "email", "role"];
-  const json2csvParser = new Parser({ fields });
-  const csv = json2csvParser.parse(data);
-  // console.log("data", csv);
-  res.attachment("filename.csv");
-  res.status(200).send(csv);
+  if (!req.admin || req.admin == "student") {
+    res.status(400).send({ error: "Not an Admin or instructor" });
+    next();
+  } else {
+    const listOfIds = await getStudentsByCourseId(id);
+    const data = await getStudentRoster(listOfIds);
+    const fields = ["name", "email", "role"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(data);
+    // console.log("data", csv);
+    res.attachment("filename.csv");
+    res.status(200).send(csv);
+  }
 });
 
 router.get("/:id/assignments", async (req, res) => {
