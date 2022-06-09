@@ -1,219 +1,95 @@
-const router = require('express').Router();
-const { validateAgainstSchema, extractValidFields } = require('../lib/validation');
+/*
+ * API sub-router for businesses collection endpoints.
+ */
 
-const businesses = require('../data/businesses');
-const { reviews } = require('./reviews');
-const { photos } = require('./photos');
+const { Router } = require("express");
+const { ObjectId, GridFSBucket } = require("mongodb");
+const { getDbReference } = require("../lib/mongo");
+const { validateAgainstSchema } = require("../lib/validation");
+const {
+  BusinessSchema,
+  getBusinessesPage,
+  insertNewBusiness,
+  getBusinessById,
+} = require("../models/business");
 
-const { getDbInstance } = require('../lib/mongo')
-
-const { ObjectID, ListCollectionsCursor, ObjectId } = require('mongodb');
-const e = require('express');
-
-exports.router = router;
-exports.businesses = businesses;
+const router = Router();
 
 /*
- * Schema describing required/optional fields of a business object.
+ * GET /businesses - Route to return a paginated list of businesses.
  */
-const businessSchema = {
-    ownerid: { required: true },
-    name: { required: true },
-    address: { required: true },
-    city: { required: true },
-    state: { required: true },
-    zip: { required: true },
-    phone: { required: true },
-    category: { required: true },
-    subcategory: { required: true },
-    website: { required: false },
-    email: { required: false }
-};
-
-exports.businessSchema = businessSchema
-
-// Function to insert a new business into the db
-// exports.insertNewBusiness = async function insertNewBusiness(business) {
-//     const db = getDbInstance()
-//     const collection = db.collection('businesses')
-
-//     business = extractValidFields(business, businessSchema)
-//     const result = await collection.insertOne(business)
-//     return result.insertedId
-// }
-
-
-/*
- * Function to create a new business and insert to db
- */
-async function insertNewBusiness(business) {
-    const db = getDbInstance()
-    const collection = db.collection('businesses')
-
-    business = extractValidFields(business, businessSchema)
-    const result = await collection.insertOne(business)
-    return result.insertedId
-}
-
-/*
- * Function to get businesses page
- */
-async function getBusinessesPage(page) {
-    const db = getDbInstance()
-    const collection = db.collection('businesses')
-    const count = await collection.countDocuments()
-    const pageSize = 10
-    const lastPage = Math.ceil(count / pageSize)
-    page = page < 1 ? 1 : page
-    const offset = (page - 1) * pageSize
-    const results = await collection.find({}).sort({ _id: 1 }).skip(offset).limit(pageSize).toArray()
-
-    return {
-        businesses: results,
-        page: page,
-        totalPages: lastPage,
-        pageSize: pageSize,
-        count: count
+router.get("/", async (req, res) => {
+  try {
+    /*
+     * Fetch page info, generate HATEOAS links for surrounding pages and then
+     * send response.
+     */
+    const businessPage = await getBusinessesPage(parseInt(req.query.page) || 1);
+    businessPage.links = {};
+    if (businessPage.page < businessPage.totalPages) {
+      businessPage.links.nextPage = `/businesses?page=${businessPage.page + 1}`;
+      businessPage.links.lastPage = `/businesses?page=${businessPage.totalPages}`;
     }
-}
-
-
-/*
- * Function to get specific business by id
- */
-async function getBusinessById(id) {
-    const db = getDbInstance()
-    const collection = db.collection('businesses')
-    console.log(id)
-    const businesses = await collection.aggregate([
-        { $match: { _id: new ObjectId(id) } },
-        {
-            $lookup: {
-                from: "reviews",
-                localField: "_id",
-                foreignField: "businessid",
-                as: "reviews"
-            }
-        },
-        {
-            $lookup: {
-                from: "photos",
-                localField: "_id",
-                foreignField: "businessid",
-                as: "photos"
-            }
-        }
-    ]).toArray()
-    console.log(businesses)
-    return businesses[0]
-}
-
-
-/*
- * Function to update business by id
- */
-async function updateBusinessById(id, business) {
-    const db = getDbInstance()
-    const businessValues = {
-        ownerid: business.ownerid,
-        name: business.name,
-        address: business.address,
-        city: business.city,
-        state: business.state,
-        zip: business.zip,
-        phone: business.phone,
-        category: business.category,
-        subcategory: business.subcategory,
-        website: business.website,
-        email: business.email
-    };
-    const collection = db.collection('businesses');
-    const result = await collection.replaceOne({ _id: new ObjectId(id) },
-        businessValues
-    );
-    return result.matchedCount > 0;
-}
-
-
-/*
- * Function to delete business by id
- */
-async function deleteBusinessById(id) {
-    const db = getDbInstance()
-    const collection = db.collection('businesses');
-    const result = await collection.deleteOne({ _id: new ObjectId(id) })
-    return result.deletedCount > 0;
-}
-
-
-/*
- * Route to return a list of businesses.
- */
-router.get('/', async(req, res) => {
-    const businessesPage = await getBusinessesPage(parseInt(req.query.page) || 1)
-    res.status(200).send(businessesPage)
-
+    if (businessPage.page > 1) {
+      businessPage.links.prevPage = `/businesses?page=${businessPage.page - 1}`;
+      businessPage.links.firstPage = "/businesses?page=1";
+    }
+    res.status(200).send(businessPage);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Error fetching businesses list.  Please try again later.",
+    });
+  }
 });
 
 /*
- * Route to create a new business.
+ * POST /businesses - Route to create a new business.
  */
-router.post('/', async function(req, res, next) {
-    if (validateAgainstSchema(req.body, businessSchema)) {
-        const id = await insertNewBusiness(req.body)
-        res.status(201).send({ id: id })
-    } else {
-        res.status(400).send({
-            error: "Request body is not a valid business object"
-        });
+router.post("/", async (req, res) => {
+  if (validateAgainstSchema(req.body, BusinessSchema)) {
+    try {
+      const id = await insertNewBusiness(req.body);
+      res.status(201).send({
+        id: id,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({
+        error: "Error inserting business into DB.  Please try again later.",
+      });
     }
+  } else {
+    res.status(400).send({
+      error: "Request body is not a valid business object.",
+    });
+  }
 });
 
 /*
- * Route to fetch info about a specific business.
+ * GET /businesses/{id} - Route to fetch info about a specific business.
  */
-router.get('/:businessid', async function(req, res, next) {
-    const id = req.params.businessid
-    const business = await getBusinessById(id)
+router.get("/:id", async (req, res, next) => {
+  try {
+    const business = await getBusinessById(req.params.id);
     if (business) {
-        res.status(200).send(business)
+      console.log("Business", business._id);
+      const db = getDbReference();
+      const bucket = new GridFSBucket(db, { bucketName: "images" });
+      const results = await bucket
+        .find({ "metadata.businessId": new ObjectId(req.params.id) })
+        .toArray();
+      console.log(results);
+      res.status(200).send({ business: business, photos: results });
     } else {
-        next()
+      next();
     }
-
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Unable to fetch business.  Please try again later.",
+    });
+  }
 });
 
-/*
- * Route to replace data for a business.
- */
-router.put('/:businessid', async function(req, res, next) {
-    if (validateAgainstSchema(req.body, businessSchema)) {
-        const id = req.params.businessid
-        const updateSuccessful = await updateBusinessById((id), req.body)
-        if (updateSuccessful) {
-            res.status(204).send()
-        } else {
-            next()
-        }
-    } else {
-        res.status(400).send({
-            err: "Request body does not contain a valid business id"
-        })
-    }
-});
-
-/*
- * Route to delete a business.
- */
-router.delete('/:businessid', async function(req, res, next) {
-
-    const id = req.params.businessid
-    const deleteSuccessful = await deleteBusinessById(id)
-
-    if (deleteSuccessful) {
-        res.status(204).send()
-    } else {
-        next()
-    }
-
-});
+module.exports = router;
