@@ -219,7 +219,7 @@ router.get("/:id/students", requireAuthentication, async (req, res) => {
     const course = await getCourseById(id);
     const students = await getStudentsByCourseId(id);
     if (students) {
-      res.status(200).send(students);
+      res.status(200).send({ students: students });
     } else {
       res.status(400).send({ error: "Could not find students for that id" });
       next();
@@ -241,7 +241,7 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
     console.log("req.body post student", req.body);
     const newStudent = await insertNewStudent(req.body);
     if (newStudent) {
-      res.status(200).send(newStudent);
+      res.status(200).send({ id: newStudent });
     } else {
       res.status(400).send({ error: "Could not add student to class" });
       next();
@@ -271,7 +271,7 @@ router.get("/:id/assignments", async (req, res) => {
   const id = req.params.id;
   const assignments = await getAssignmentsByCourseId(id);
   if (assignments) {
-    res.status(200).send(assignments);
+    res.status(200).send({ assignments: assignments });
   } else {
     next();
   }

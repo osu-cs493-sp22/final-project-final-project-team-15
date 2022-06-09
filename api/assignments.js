@@ -18,11 +18,23 @@ const { requireAuthentication } = require("../lib/auth");
 
 const { getCourseById } = require("./courses");
 
-const { ObjectID, ListCollectionsCursor, ObjectId } = require("mongodb");
+const {
+  ObjectID,
+  ListCollectionsCursor,
+  ObjectId,
+  GridFSBucket,
+} = require("mongodb");
+const fs = require("fs/promises");
+const crypto = require("crypto");
 const e = require("express");
 
 exports.router = router;
 // exports.assignments = assignments;
+
+const fileTypes = {
+  "application/pdf": "pdf",
+  "text/plain": "txt",
+};
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -69,7 +81,7 @@ async function insertNewSubmission(submission) {
   const db = getDbInstance();
   const collection = db.collection("submissions");
 
-  submission = extractValidFields(submission, SubmissionSchema);
+  //submission = extractValidFields(submission, SubmissionSchema);
   const result = await collection.insertOne(submission);
   return result.insertedId;
 }
@@ -78,6 +90,7 @@ async function insertNewAssignment(assingment) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
   console.log("SCHEMA", AssignmentSchema);
+  assingment.due = new Date(assingment.due).toISOString();
   //assingment = extractValidFields(assingment, AssignmentSchema);
   const result = await collection.insertOne(assingment);
   return result.insertedId;
@@ -103,7 +116,7 @@ async function updateAssignmentById(id, assignment) {
 function saveSubmissionFile(submission) {
   console.log("== Saving submission to GridFS Bucket ==");
   return new Promise(function (resolve, reject) {
-    const db = getDbReference();
+    const db = getDbInstance();
     const bucket = new GridFSBucket(db, { bucketName: "submissions" });
     const metadata = {
       assignmentId: submission.assignmentId,
@@ -148,7 +161,7 @@ router.post("/", requireAuthentication, async (req, res) => {
     const newAssignment = await insertNewAssignment(req.body);
     console.log("== req.headers:", req.headers);
     if (newAssignment) {
-      res.status(200).send(newAssignment);
+      res.status(200).send({ id: newAssignment });
     } else {
       next();
     }
@@ -159,7 +172,7 @@ router.get("/:id", async (req, res) => {
   const id = req.params.id;
   const assignments = await getAssignmentsById(id);
   if (assignments) {
-    res.status(200).send(assignments);
+    res.status(200).send({ assignments: assignments });
   } else {
     next();
   }
@@ -184,11 +197,11 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuthentication, async (req, res) => {
   const assignment = await getAssignmentsById(req.params.id);
   const course = await getCourseById(assignment.courseId);
   const TID = course.instructorId;
-  if (req.admin !== "admin" && TID != req.user) {
+  if (req.admin !== "admin") {
     res.status(400).send({ error: "Not an Admin" });
     next();
   } else {
@@ -207,7 +220,7 @@ router.get("/:id/submissions", async (req, res) => {
   const id = req.params.id;
   const submissions = await getSubmissionsByAssignmentId(id);
   if (submissions) {
-    res.status(200).send(submissions);
+    res.status(200).send({ submissions: submissions });
   } else {
     next();
   }
@@ -229,24 +242,17 @@ router.get("/:id/submissions", async (req, res) => {
   // }
 });
 
-router.post("/:id/submissions", requireAuthentication, async (req, res) => {
-  if (req.admin !== "student") {
+router.post("/:id/submissions", upload.single("file"), async (req, res) => {
+  if (req.admin === "student") {
     res.status(400).send({ error: "Not a student" });
     next();
   } else {
-    // const newSubmission = await insertNewSubmission(req.body);
-    // console.log("== req.headers:", req.headers);
-    // if (newSubmission) {
-    //     res.status(200).send(newSubmission);
-    // } else {
-    //     next();
-    // }
     console.log("== req.file:", req.file);
     console.log("== req.body:", req.body);
-    if (req.file && req.body && req.body.assignmentId && req.body.userId) {
+    if (req.file && req.body && req.body.assignmentId && req.body.studentId) {
       const submission = {
         assignmentId: req.body.assignmentId,
-        userId: req.body.userId,
+        studentId: req.body.studentId,
         timeStamp: Date.now(),
         grade: "N/A",
         path: req.file.path,
@@ -262,12 +268,6 @@ router.post("/:id/submissions", requireAuthentication, async (req, res) => {
         //     business: `/businesses/${req.body.businessId}`
         // }
       });
-      // } catch (err) {
-      //     console.error(err)
-      //     res.status(500).send({
-      //         error: "Error inserting photo into DB.  Please try again later."
-      //     })
-      // }
     } else {
       res.status(400).send({
         error: "Request body is not a valid submission object",
