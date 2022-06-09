@@ -54,6 +54,15 @@ async function getCourseById(id) {
   return courses[0];
 }
 
+exports.getCourseById = getCourseById;
+
+async function deleteCourseById(id) {
+  const db = getDbInstance();
+  const collection = db.collection("courses");
+  const result = await collection.deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount > 0;
+}
+
 async function getAssignmentsByCourseId(id) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
@@ -76,6 +85,7 @@ async function getStudentsByCourseId(id) {
     return students;
   }
 
+
 async function insertNewCourse(course) {
   const db = getDbInstance();
   const collection = db.collection("courses");
@@ -86,13 +96,13 @@ async function insertNewCourse(course) {
 }
 
 async function insertNewStudent(student) {
-    const db = getDbInstance();
-    const collection = db.collection("enrolled");
-  
-    //need to add to specific course. students list need help
-    student = extractValidFields(student, EnrolledStudentsSchema);
-    const result = await collection.insertOne(student);
-    return result.insertedId;
+  const db = getDbInstance();
+  const collection = db.collection("enrolled");
+
+  //need to add to specific course. students list need help
+  student = extractValidFields(student, EnrolledStudentsSchema);
+  const result = await collection.insertOne(student);
+  return result.insertedId;
 }
 
 router.get("/", async (req, res) => {
@@ -102,9 +112,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", requireAuthentication, async (req, res) => {
   if (req.admin !== "admin") {
-    res.status(400).send(
-        { error: "Not an Admin" }
-      )
+    res.status(400).send({ error: "Not an Admin" });
     next();
   } else {
     const newCourse = await insertNewCourse(req.body);
@@ -129,55 +137,59 @@ router.get("/:id", async (req, res) => {
 
 router.patch("/:id", requireAuthentication, async (req, res) => {});
 
-router.delete("/:id", requireAuthentication, async (req, res) => {});
+router.delete("/:id", requireAuthentication, async (req, res) => {
+  if (req.admin !== "admin") {
+    res.status(400).send({ error: "Not an Admin" });
+    next();
+  } else {
+    const id = req.params.id;
+    const deleteSuccessful = await deleteCourseById(id);
+
+    if (deleteSuccessful) {
+      res.status(204).send();
+    } else {
+      next();
+    }
+  }
+});
 
 router.get("/:id/students", requireAuthentication, async (req, res) => {
-    if (req.admin == "student") {
-        res.status(400).send(
-            { error: "Not an Admin or instructor" }
-          )
-        next();
-      } else {
-        const id = req.params.id;
-        const course = await getCourseById(id);
-        const students = await getStudentsByCourseId(id);
-        if (students) {
-            res.status(200).send(students);
-        } else {
-            res.status(400).send(
-                { error: "Could not find students for that id" }
-              )
-            next();
-        }
+  if (req.admin == "student") {
+    res.status(400).send({ error: "Not an Admin or instructor" });
+    next();
+  } else {
+    const id = req.params.id;
+    const course = await getCourseById(id);
+    const students = await getStudentsByCourseId(id);
+    if (students) {
+      res.status(200).send(students);
+    } else {
+      res.status(400).send({ error: "Could not find students for that id" });
+      next();
     }
+  }
 });
 
 router.post("/:id/students", requireAuthentication, async (req, res) => {
-    const id = req.params.id;
-    const course = getCourseById(id);
-    const TID = course.instructorId;
-    if (req.admin == "student") {
-        res.status(400).send(
-            { error: "Not an Admin or instructor" }
-          )
-        next();
-      } else if (req.user != TID && req.admin != "admin") {
-        res.status(400).send(
-          { error: "Not the instructor for that class" }
-        )
+  const id = req.params.id;
+  const course = getCourseById(id);
+  const TID = course.instructorId;
+  if (req.admin == "student") {
+    res.status(400).send({ error: "Not an Admin or instructor" });
+    next();
+  } else if (req.user != TID && req.admin != "admin") {
+    res.status(400).send({ error: "Not the instructor for that class" });
+    next();
+  } else {
+    //need help
+    const newStudent = await insertNewStudent(req.body);
+    if (newStudent) {
+      res.status(200).send(newStudent);
+    } else {
+      res.status(400).send({ error: "Could not add student to class" });
       next();
-      } else {
-        //need help
-        const newStudent = await insertNewStudent(req.body);
-        if (newStudent) {
-            res.status(200).send(newStudent);
-        } else {
-            res.status(400).send(
-                { error: "Could not add student to class" }
-              )
-            next();
-        }
     }
+  }
 });
 
 router.get("/:id/roster", requireAuthentication, async (req, res) => {
