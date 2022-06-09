@@ -7,7 +7,7 @@ const {
 const CourseSchema = require("../models/courses");
 const EnrolledStudentsSchema = require("../models/enrolledStudents");
 const { users } = require("./users");
-const { assignments } = require("./assingments");
+// const { assignments } = require("./assingments");
 const { submissions } = require("./submissions");
 
 const { generateAuthToken, requireAuthentication } = require("../lib/auth");
@@ -17,7 +17,7 @@ const { ObjectID, ListCollectionsCursor, ObjectId } = require("mongodb");
 const e = require("express");
 
 exports.router = router;
-exports.courses = courses;
+// exports.courses = courses;
 
 async function getCoursesPage(page) {
   const db = getDbInstance();
@@ -75,15 +75,16 @@ async function getAssignmentsByCourseId(id) {
 }
 
 async function getStudentsByCourseId(id) {
-  const db = getDbInstance();
-  const collection = db.collection("enrolled");
-  console.log(id);
-  const students = await collection
-    .aggregate([{ $match: { courseId: new ObjectId(id) } }])
-    .toArray();
-  console.log(students);
-  return students;
-}
+    const db = getDbInstance();
+    const collection = db.collection("enrolled");
+    console.log(id);
+    const students = await collection
+      .aggregate([{ $match: { courseId: new ObjectId(id) } }])
+      .toArray();
+    console.log(students);
+    return students;
+  }
+
 
 async function insertNewCourse(course) {
   const db = getDbInstance();
@@ -191,7 +192,9 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
   }
 });
 
-router.get("/:id/roster", requireAuthentication, async (req, res) => {});
+router.get("/:id/roster", requireAuthentication, async (req, res) => {
+
+});
 
 router.get("/:id/assignments", async (req, res) => {
   const id = req.params.id;
