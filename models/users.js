@@ -53,6 +53,18 @@ exports.getUserInfo = async function getUserInfo(id, includePassword) {
   return user[0];
 };
 
+exports.GetUserById = async function GetUserById(id) {
+  const db = getDbInstance();
+  const collection = db.collection("users");
+
+  const user = await collection
+    .find({ _id: ObjectId(id) })
+    .project(includePassword ? {} : { password: 0 })
+    .toArray();
+
+  return user[0];
+};
+
 async function getCoursesByInstructor(id) {
   const db = getDbInstance();
   const collection = db.collection("users");

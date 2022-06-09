@@ -4,6 +4,10 @@ const {
   extractValidFields,
 } = require("../lib/validation");
 
+
+const {Parser} = require('json2csv')
+const {GetUserById} = require('../models/users')
+
 const CourseSchema = require("../models/courses");
 const EnrolledStudentsSchema = require("../models/enrolledStudents");
 const { users } = require("./users");
@@ -81,6 +85,19 @@ async function getStudentsByCourseId(id) {
   console.log(students);
   return students;
 }
+
+async function getStudentRoster(arr) {
+  const db = getDbInstance();
+  const collection = db.collection("users");
+  console.log(arr);
+  const students = [];
+  var count = 0;
+  
+  students = arr.map(GetUserById);
+  console.log('HERE', students);
+  return students;
+}
+
 
 async function insertNewCourse(course) {
   const db = getDbInstance();
@@ -195,7 +212,16 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
   }
 });
 
-router.get("/:id/roster", requireAuthentication, async (req, res) => {});
+router.get("/:id/roster", requireAuthentication, async (req, res) => {
+  const id = req.params.id;
+  const listOfIds = await getStudentsByCourseId(id);
+  const data = await getStudentRoster(listOfIds);
+  const json2csvParser = new Parser();
+  const csv = json2csvParser.parse(data);
+  console.log('data',csv);
+  res.attachment('filename.csv');
+  res.status(200).send(data);
+});
 
 router.get("/:id/assignments", async (req, res) => {
   const id = req.params.id;
