@@ -4,6 +4,9 @@ const {
   extractValidFields,
 } = require("../lib/validation");
 
+const { Parser } = require("json2csv");
+const { getUserInfo } = require("../models/users");
+
 const CourseSchema = require("../models/courses");
 const EnrolledStudentsSchema = require("../models/enrolledStudents");
 const { users } = require("./users");
@@ -75,10 +78,27 @@ async function getStudentsByCourseId(id) {
   const db = getDbInstance();
   const collection = db.collection("enrolled");
   console.log(id);
-  const students = await collection
-    .aggregate([{ $match: { courseId: new ObjectId(id) } }])
-    .toArray();
+  const students = await collection.find({ courseId: id }).toArray();
   console.log(students);
+  return students;
+}
+
+async function getStudentRoster(arr) {
+  const db = getDbInstance();
+  const collection = db.collection("users");
+  console.log(arr);
+  let students = [];
+  var count = 0;
+  console.log("array", arr);
+  for (let i = 0; i < arr.length; i++) {
+    console.log("arr[i]._id", arr[i]._id);
+    let temp = await getUserInfo(arr[i].userId, false);
+    // let temp = arr[i].userId;
+    console.log("temp", temp);
+    students[i] = temp;
+  }
+  // students = await arr.map(GetUserById);
+  console.log("HERE", students);
   return students;
 }
 
@@ -98,7 +118,7 @@ async function insertNewStudent(student) {
   const collection = db.collection("enrolled");
 
   //need to add to specific course. students list need help
-  student = extractValidFields(student, EnrolledStudentsSchema);
+  //student = extractValidFields(student, EnrolledStudentsSchema);
   const result = await collection.insertOne(student);
   return result.insertedId;
 }
@@ -149,8 +169,9 @@ router.post("/", requireAuthentication, async (req, res) => {
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   const course = await getCourseById(id);
+  const assignments = await getAssignmentsByCourseId(id);
   if (course) {
-    res.status(200).send(course);
+    res.status(200).send({ course: course, assignments: assignments });
   } else {
     next();
   }
@@ -210,14 +231,14 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
   const id = req.params.id;
   const course = getCourseById(id);
   const TID = course.instructorId;
-  if (req.admin == "student") {
+  if (req.admin == "student" || !req.admin) {
     res.status(400).send({ error: "Not an Admin or instructor" });
     next();
   } else if (req.user != TID && req.admin != "admin") {
     res.status(400).send({ error: "Not the instructor for that class" });
     next();
   } else {
-    //need help
+    console.log("req.body post student", req.body);
     const newStudent = await insertNewStudent(req.body);
     if (newStudent) {
       res.status(200).send(newStudent);
@@ -228,7 +249,23 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
   }
 });
 
-router.get("/:id/roster", requireAuthentication, async (req, res) => {});
+router.get("/:id/roster", requireAuthentication, async (req, res) => {
+  const id = req.params.id;
+  console.log("roseter id", id);
+  if (!req.admin || req.admin == "student") {
+    res.status(400).send({ error: "Not an Admin or instructor" });
+    next();
+  } else {
+    const listOfIds = await getStudentsByCourseId(id);
+    const data = await getStudentRoster(listOfIds);
+    const fields = ["name", "email", "role"];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(data);
+    // console.log("data", csv);
+    res.attachment("filename.csv");
+    res.status(200).send(csv);
+  }
+});
 
 router.get("/:id/assignments", async (req, res) => {
   const id = req.params.id;

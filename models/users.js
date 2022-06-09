@@ -38,7 +38,7 @@ exports.getUserByEmail = async function getUserByEmail(email, includePassword) {
 exports.getUserInfo = async function getUserInfo(id, includePassword) {
   const db = getDbInstance();
   const collection = db.collection("users");
-
+  console.log("ID GET USER INFO ", id);
   const user = await collection
     .find({ _id: ObjectId(id) })
     .project(includePassword ? {} : { password: 0 })
@@ -49,6 +49,18 @@ exports.getUserInfo = async function getUserInfo(id, includePassword) {
   } else if (user.role == "student") {
     user[0].courses = getCoursesByEnrollment(id);
   }
+
+  return user[0];
+};
+
+exports.GetUserById = async function GetUserById(id, includePassword) {
+  const db = getDbInstance();
+  const collection = db.collection("users");
+
+  const user = await collection
+    .find({ _id: new ObjectId(id) })
+    .project(includePassword ? {} : { password: 0 })
+    .toArray();
 
   return user[0];
 };
