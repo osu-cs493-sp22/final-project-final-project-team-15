@@ -7,7 +7,7 @@ const {
 const CourseSchema = require("../models/courses");
 const EnrolledStudentsSchema = require("../models/enrolledStudents");
 const { users } = require("./users");
-const { assignments } = require("./assingments");
+// const { assignments } = require("./assingments");
 const { submissions } = require("./submissions");
 
 const { generateAuthToken, requireAuthentication } = require("../lib/auth");
@@ -17,7 +17,7 @@ const { ObjectID, ListCollectionsCursor, ObjectId } = require("mongodb");
 const e = require("express");
 
 exports.router = router;
-exports.courses = courses;
+// exports.courses = courses;
 
 async function getCoursesPage(page) {
   const db = getDbInstance();
