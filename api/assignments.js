@@ -6,6 +6,7 @@ const {
 
 const AssignmentSchema = require("../models/assignments");
 const SubmissionSchema = require("../models/submissions");
+const multer = require("multer");
 
 // const { users } = require("../models/users");
 // const { courses } = require("../models/courses");
@@ -22,6 +23,20 @@ const e = require("express");
 
 exports.router = router;
 // exports.assignments = assignments;
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: `${__dirname}/uploads`,
+    filename: function (req, file, callback) {
+      const ext = fileTypes[file.mimetype];
+      const filename = crypto.pseudoRandomBytes(16).toString("hex");
+      callback(null, `${filename}.${ext}`);
+    },
+  }),
+  fileFilter: function (req, file, callback) {
+    callback(null, !!fileTypes[file.mimetype]);
+  },
+});
 
 async function getAssignmentsById(id) {
   const db = getDbInstance();
@@ -112,19 +127,18 @@ function saveSubmissionFile(submission) {
   });
 }
 
-// async function getImageInfoById(id) {
-//     const db = getDbReference();
-//     // const collection = db.collection('images');
-//     const bucket = new GridFSBucket(db, { bucketName: 'images' })
+async function getSubmissionInfoById(id) {
+  const db = getDbReference();
+  // const collection = db.collection('images');
+  const bucket = new GridFSBucket(db, { bucketName: "submissions" });
 
-//     if (!ObjectId.isValid(id)) {
-//         return null;
-//     } else {
-//         const results = await bucket.find({ _id: new ObjectId(id) })
-//             .toArray();
-//         return results[0];
-//     }
-// };
+  if (!ObjectId.isValid(id)) {
+    return null;
+  } else {
+    const results = await bucket.find({ _id: new ObjectId(id) }).toArray();
+    return results[0];
+  }
+}
 
 router.post("/", requireAuthentication, async (req, res) => {
   if (req.admin == "student") {
