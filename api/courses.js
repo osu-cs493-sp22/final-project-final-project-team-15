@@ -120,6 +120,24 @@ async function insertNewStudent(student) {
   return result.insertedId;
 }
 
+async function updateCourseById(id, course) {
+  const db = getDbInstance();
+  const courseValues = {
+    subject: course.subject,
+    number: course.number,
+    title: course.title,
+    term: course.term,
+    instructorId: course.instructorId,
+  };
+
+  const collection = db.collection("courses");
+  const result = await collection.replaceOne(
+    { _id: new ObjectId(id) },
+    courseValues
+  );
+  return result.matchedCount > 0;
+}
+
 router.get("/", async (req, res) => {
   const coursesPage = await getCoursesPage(parseInt(req.query.page) || 1);
   res.status(200).send(coursesPage);
@@ -148,14 +166,30 @@ router.post("/", requireAuthentication, async (req, res) => {
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   const course = await getCourseById(id);
+  const assignments = await getAssignmentsByCourseId(id);
   if (course) {
-    res.status(200).send(course);
+    res.status(200).send({ course: course, assignments: assignments });
   } else {
     next();
   }
 });
 
-router.patch("/:id", requireAuthentication, async (req, res) => {});
+router.patch("/:id", requireAuthentication, async (req, res) => {
+  if (validateAgainstSchema(req.body, CourseSchema)) {
+    console.log("instructorID == ", req.body.instructorId);
+    const updateSuccessful = await updateCourseById(req.params.id, req.body);
+    console.log("UPDATED == ", updateSuccessful);
+    if (updateSuccessful) {
+      res.status(204).send();
+    } else {
+      next();
+    }
+  } else {
+    res.status(400).send({
+      err: "Request body does not contain a valid course.",
+    });
+  }
+});
 
 router.delete("/:id", requireAuthentication, async (req, res) => {
   if (req.admin !== "admin") {
@@ -194,7 +228,7 @@ router.post("/:id/students", requireAuthentication, async (req, res) => {
   const id = req.params.id;
   const course = getCourseById(id);
   const TID = course.instructorId;
-  if (req.admin == "student") {
+  if (req.admin == "student" || !req.admin) {
     res.status(400).send({ error: "Not an Admin or instructor" });
     next();
   } else if (req.user != TID && req.admin != "admin") {

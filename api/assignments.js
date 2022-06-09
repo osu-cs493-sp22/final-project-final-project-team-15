@@ -62,10 +62,30 @@ async function insertNewSubmission(submission) {
 async function insertNewAssignment(assingment) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
+  let due = new Date(assingment.due);
+  assingment.due = due.toISOString();
+  console.log("DUE DATE ==> ", assingment.due);
   console.log("SCHEMA", AssignmentSchema);
   //assingment = extractValidFields(assingment, AssignmentSchema);
   const result = await collection.insertOne(assingment);
   return result.insertedId;
+}
+
+async function updateAssignmentById(id, assignment) {
+  const db = getDbInstance();
+  const assignmentValues = {
+    courseId: assignment.courseId,
+    title: assignment.title,
+    points: assignment.points,
+    due: assignment.due,
+  };
+
+  const collection = db.collection("assignments");
+  const result = await collection.replaceOne(
+    { _id: new ObjectId(id) },
+    assignmentValues
+  );
+  return result.matchedCount > 0;
 }
 
 router.post("/", requireAuthentication, async (req, res) => {
@@ -93,7 +113,24 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.patch("/:id", async (req, res) => {});
+router.patch("/:id", async (req, res) => {
+  if (validateAgainstSchema(req.body, AssignmentSchema)) {
+    const updateSuccessful = await updateAssignmentById(
+      req.params.id,
+      req.body
+    );
+    console.log("UPDATED == ", updateSuccessful);
+    if (updateSuccessful) {
+      res.status(204).send();
+    } else {
+      next();
+    }
+  } else {
+    res.status(400).send({
+      err: "Request body does not contain a valid Assignment.",
+    });
+  }
+});
 
 router.delete("/:id", async (req, res) => {
   const assignment = await getAssignmentsById(req.params.id);
