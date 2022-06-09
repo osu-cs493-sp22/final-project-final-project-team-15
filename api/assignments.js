@@ -13,6 +13,8 @@ const SubmissionSchema = require("../models/submissions");
 
 const { getDbInstance } = require("../lib/mongo");
 
+const { requireAuthentication } = require("../lib/auth");
+
 const { getCourseById } = require("./courses");
 
 const { ObjectID, ListCollectionsCursor, ObjectId } = require("mongodb");
@@ -25,11 +27,9 @@ async function getAssignmentsById(id) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
   console.log(id);
-  const assignments = await collection
-    .aggregate([{ $match: { Id: new ObjectId(id) } }])
-    .toArray();
+  const assignments = await collection.find({ _id: ObjectId(id) }).toArray();
   console.log(assignments);
-  return assignments;
+  return assignments[0];
 }
 
 async function getSubmissionsByAssignmentId(id) {
@@ -62,15 +62,15 @@ async function insertNewSubmission(submission) {
 async function insertNewAssignment(assingment) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
-
-  assingment = extractValidFields(assingment, AssignmentSchema);
+  console.log("SCHEMA", AssignmentSchema);
+  //assingment = extractValidFields(assingment, AssignmentSchema);
   const result = await collection.insertOne(assingment);
   return result.insertedId;
 }
 
-router.post("/", async (req, res) => {
-  if (req.admin !== "teacher") {
-    res.status(400).send({ error: "Not an teacher" });
+router.post("/", requireAuthentication, async (req, res) => {
+  if (req.admin == "student") {
+    res.status(400).send({ error: "Not a teacher" });
     next();
   } else {
     const newAssignment = await insertNewAssignment(req.body);
@@ -126,7 +126,7 @@ router.get("/:id/submissions", async (req, res) => {
 
 router.post("/:id/submissions", async (req, res) => {
   if (req.admin !== "student") {
-    res.status(400).send({ error: "Not an student" });
+    res.status(400).send({ error: "Not a student" });
     next();
   } else {
     const newSubmission = await insertNewSubmission(req.body);

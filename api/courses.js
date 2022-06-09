@@ -66,9 +66,7 @@ async function getAssignmentsByCourseId(id) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
   console.log(id);
-  const assignments = await collection
-    .aggregate([{ $match: { courseId: new ObjectId(id) } }])
-    .toArray();
+  const assignments = await collection.find({ courseId: id }).toArray();
   console.log(assignments);
   return assignments;
 }
@@ -88,10 +86,10 @@ async function insertNewCourse(course) {
   const db = getDbInstance();
   const collection = db.collection("courses");
 
-  // course = extractValidFields(course, CourseSchema);
-  console.log("new course ==>", course);
+  //need to add to specific course. students list need help
+  //course = extractValidFields(course, CourseSchema);
   const result = await collection.insertOne(course);
-  console.log("result", result);
+  console.log("COURSE IS ==", course);
   return result.insertedId;
 }
 
@@ -111,17 +109,22 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", requireAuthentication, async (req, res) => {
-  if (req.admin !== "admin") {
-    res.status(400).send({ error: "Not an Admin" });
-    next();
-  } else if (validateAgainstSchema(req.body, CourseSchema)) {
-    const newCourse = await insertNewCourse(req.body);
-    console.log("== req.headers:", req.headers);
-    if (newCourse) {
-      res.status(200).send(newCourse);
-    } else {
-      next();
-    }
+  if (validateAgainstSchema(req.body, CourseSchema)) {
+    // check correct permissions for admin or instructor creation -- (does not work right now)
+    // if(req.body.role == 'admin' || req.body.role == 'instructor') {
+    //   requireAuthentication(req, res);
+    //   console.log(req.admin)
+    //   if(req.admin != 'admin') res.status(401).send({ error: "Invalid permissions" })
+    // }
+
+    const id = await insertNewCourse(req.body);
+    res.status(201).send({
+      _id: id,
+    });
+  } else {
+    res.status(400).send({
+      error: "Request body does not contain a valid User.",
+    });
   }
 });
 
