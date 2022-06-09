@@ -38,7 +38,7 @@ exports.getUserByEmail = async function getUserByEmail(email, includePassword) {
 exports.getUserInfo = async function getUserInfo(id, includePassword) {
   const db = getDbInstance();
   const collection = db.collection("users");
-
+  console.log("ID GET USER INFO ", id);
   const user = await collection
     .find({ _id: ObjectId(id) })
     .project(includePassword ? {} : { password: 0 })
@@ -53,12 +53,12 @@ exports.getUserInfo = async function getUserInfo(id, includePassword) {
   return user[0];
 };
 
-exports.GetUserById = async function GetUserById(id) {
+exports.GetUserById = async function GetUserById(id, includePassword) {
   const db = getDbInstance();
   const collection = db.collection("users");
 
   const user = await collection
-    .find({ _id: ObjectId(id) })
+    .find({ _id: new ObjectId(id) })
     .project(includePassword ? {} : { password: 0 })
     .toArray();
 
