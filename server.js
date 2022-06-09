@@ -3,6 +3,7 @@ const morgan = require('morgan');
 const redis = require('redis')
 
 const api = require('./api');
+const { isValidToken } = require('./lib/auth');
 const { connectToDb } = require('./lib/mongo')
 
 const app = express();
@@ -13,12 +14,14 @@ const redisPort = process.env.REDIS_PORT || 6379
 
 const redisClient = redis.createClient(redisHost, redisPort)
 
-const rateLimitMaxRequests = 5
+let rateLimitMaxRequests = 30
 const rateLimitWindowMS = 60000
 
 async function rateLimit(req, res, next) {
     const ip = req.ip
-    // const tokenBucket = await getUserTokenBucket(ip)
+    if(!isValidToken(req)) {
+        rateLimitMaxRequests = 10
+    }
   
     let tokenBucket
     try {
@@ -51,7 +54,7 @@ async function rateLimit(req, res, next) {
     }
   }
 
-  
+
 app.use(rateLimit)
 
 /*
