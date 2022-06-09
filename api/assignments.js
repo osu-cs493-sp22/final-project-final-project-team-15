@@ -14,7 +14,7 @@ const { ObjectID, ListCollectionsCursor, ObjectId } = require('mongodb');
 const e = require('express');
 
 exports.router = router;
-exports.assignments = assignments;
+// exports.assignments = assignments;
 
 
 async function getAssignmentsById(id) {
