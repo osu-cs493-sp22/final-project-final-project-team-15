@@ -62,6 +62,9 @@ async function insertNewSubmission(submission) {
 async function insertNewAssignment(assingment) {
   const db = getDbInstance();
   const collection = db.collection("assignments");
+  let due = new Date(assingment.due);
+  assingment.due = due.toISOString();
+  console.log("DUE DATE ==> ", assingment.due);
   console.log("SCHEMA", AssignmentSchema);
   //assingment = extractValidFields(assingment, AssignmentSchema);
   const result = await collection.insertOne(assingment);
